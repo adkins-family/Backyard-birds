@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Backyard Birds — Northwest Woods</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --paper:#EBEDE1; --paper-2:#E2E5D6; --ink:#1E2E24; --ink-soft:#3C4A3F;
+    --moss:#2F5E3F; --moss-deep:#234A30; --sage:#7C9A6E; --sage-soft:#A8BE9C;
+    --bark:#5C4A38; --bark-soft:#8a7560; --cardinal:#C0392B;
+    --line:rgba(35,74,48,.16); --card:#F3F4EC;
+    --shadow:0 1px 0 rgba(35,74,48,.06), 0 8px 24px -16px rgba(30,46,36,.45);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:"Nunito Sans",system-ui,sans-serif;color:var(--ink);
+    background:radial-gradient(120% 80% at 50% -10%, rgba(124,154,110,.22), transparent 60%),var(--paper);
+    background-attachment:fixed;line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh;
+  }
+  .wrap{max-width:880px;margin:0 auto;padding:0 18px 80px;}
+
+  header.site{padding:30px 0 18px;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;border-bottom:1.5px solid var(--line);}
+  .brand{display:flex;align-items:center;gap:14px;}
+  .mark{width:46px;height:46px;flex:0 0 auto;color:var(--moss);filter:drop-shadow(0 2px 0 rgba(35,74,48,.12));}
+  .brand h1{font-family:"DM Serif Display",serif;font-weight:400;font-size:clamp(28px,6vw,40px);line-height:.95;margin:0;color:var(--ink);letter-spacing:.2px;}
+  .brand .loc{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--bark);margin-top:6px;}
+  .tally{display:flex;gap:10px;}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 14px;text-align:center;box-shadow:var(--shadow);min-width:78px;}
+  .stat .n{font-family:"DM Serif Display",serif;font-size:26px;line-height:1;color:var(--moss-deep);}
+  .stat .l{font-family:"JetBrains Mono",monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--bark-soft);margin-top:5px;}
+
+  .logger{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 18px 16px;margin-top:22px;box-shadow:var(--shadow);position:relative;overflow:hidden;}
+  .logger::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--cardinal);opacity:.9;}
+  .logger .today{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--bark);}
+  .logger .sunline{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.04em;color:var(--moss-deep);margin-top:4px;}
+  .logger h2{font-family:"DM Serif Display",serif;font-weight:400;font-size:23px;margin:8px 0 14px;}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;}
+  .field{flex:1 1 220px;position:relative;min-width:0;}
+  input[type=text],input[type=number]{width:100%;font-family:inherit;font-size:15px;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:11px 12px;outline:none;transition:border-color .15s,box-shadow .15s;}
+  input::placeholder{color:#9aa093;}
+  input:focus{border-color:var(--moss);box-shadow:0 0 0 3px rgba(47,94,63,.14);}
+  input[type=number]{flex:0 0 90px;width:90px;text-align:center;}
+  #note-input{margin-top:10px;}
+  .countwrap{flex:0 0 auto;display:flex;align-items:center;gap:6px;}
+  .countwrap label{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--bark);text-transform:uppercase;letter-spacing:.08em;}
+  button{font-family:inherit;cursor:pointer;border:none;}
+  .btn-log{flex:0 0 auto;background:var(--moss);color:#fff;font-weight:700;font-size:15px;border-radius:10px;padding:11px 20px;transition:background .15s,transform .05s;}
+  .btn-log:hover{background:var(--moss-deep);}
+  .btn-log:active{transform:translateY(1px);}
+
+  .suggest{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:20;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px -12px rgba(30,46,36,.5);max-height:240px;overflow:auto;}
+  .suggest button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;padding:9px 12px;font-size:14.5px;color:var(--ink);border-bottom:1px solid var(--line);}
+  .suggest button:last-child{border-bottom:none;}
+  .suggest button:hover,.suggest button.active{background:var(--paper-2);}
+  .suggest .sci{font-style:italic;color:var(--bark-soft);font-size:12.5px;margin-left:auto;}
+
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .chips .lbl{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--bark-soft);width:100%;margin-bottom:-2px;}
+  .chip{display:inline-flex;align-items:center;gap:7px;background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:6px 13px 6px 9px;font-size:13.5px;font-weight:600;color:var(--ink-soft);transition:border-color .15s,background .15s,transform .05s;}
+  .chip:hover{border-color:var(--sage);background:var(--card);}
+  .chip:active{transform:translateY(1px);}
+  .dot{width:11px;height:11px;border-radius:50%;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);}
+
+  nav.tabs{display:flex;gap:4px;margin:26px 0 4px;border-bottom:1.5px solid var(--line);overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .tab{background:none;padding:11px 14px 13px;font-size:14.5px;font-weight:700;color:var(--bark-soft);border-bottom:2.5px solid transparent;margin-bottom:-1.5px;transition:color .15s,border-color .15s;letter-spacing:.01em;white-space:nowrap;flex:0 0 auto;}
+  .tab:hover{color:var(--ink-soft);}
+  .tab.active{color:var(--moss-deep);border-bottom-color:var(--cardinal);}
+  .tab .ct{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--bark-soft);font-weight:500;}
+  .panel{padding-top:18px;animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+
+  .day-head{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--bark);margin:18px 0 10px;display:flex;align-items:center;gap:10px;}
+  .day-head::after{content:"";flex:1;height:1px;background:var(--line);}
+  .entry{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:9px;box-shadow:var(--shadow);}
+  .entry .dot{width:16px;height:16px;}
+  .entry .body{flex:1;min-width:0;}
+  .entry .name{font-family:"DM Serif Display",serif;font-size:18px;line-height:1.1;}
+  .entry .sci{font-style:italic;color:var(--bark-soft);font-size:12.5px;}
+  .entry .note{font-size:13.5px;color:var(--ink-soft);margin-top:3px;}
+  .entry .count{font-family:"JetBrains Mono",monospace;font-weight:500;font-size:13px;color:#fff;background:var(--moss);border-radius:999px;padding:3px 10px;flex:0 0 auto;}
+  .entry .del{background:none;color:var(--bark-soft);font-size:18px;line-height:1;padding:6px;border-radius:8px;flex:0 0 auto;transition:color .15s,background .15s;}
+  .entry .del:hover{color:var(--cardinal);background:rgba(192,57,43,.08);}
+
+  .empty{text-align:center;padding:48px 20px;color:var(--bark-soft);border:1.5px dashed var(--line);border-radius:16px;background:rgba(243,244,236,.5);}
+  .empty .big{font-family:"DM Serif Display",serif;font-size:22px;color:var(--ink-soft);margin-bottom:6px;}
+
+  .guide{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:12px;}
+  .gcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:left;position:relative;box-shadow:var(--shadow);transition:transform .08s,border-color .15s;display:flex;flex-direction:column;gap:8px;cursor:pointer;}
+  .gcard:hover{transform:translateY(-2px);border-color:var(--sage);}
+  .gcard.unseen{opacity:.82;}
+  .gcard.unseen .dot{filter:grayscale(.65);}
+  .gcard .top{display:flex;align-items:center;gap:10px;}
+  .gcard .dot{width:18px;height:18px;}
+  .gcard .name{font-family:"DM Serif Display",serif;font-size:18px;line-height:1.05;}
+  .gcard .sci{font-style:italic;color:var(--bark-soft);font-size:12px;}
+  .gcard .hint{font-size:13px;color:var(--ink-soft);}
+  .gcard .fact{font-size:12.5px;color:var(--bark);border-top:1px dashed var(--line);padding-top:7px;margin-top:auto;}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;}
+  .tag{font-family:"JetBrains Mono",monospace;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:6px;background:var(--paper-2);color:var(--bark);}
+  .tag.now{background:rgba(47,94,63,.14);color:var(--moss-deep);}
+  .tag.peak{background:rgba(192,57,43,.1);color:var(--cardinal);}
+  .stamp{position:absolute;top:11px;right:11px;display:flex;align-items:center;gap:4px;font-family:"JetBrains Mono",monospace;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--cardinal);border:1.2px solid var(--cardinal);border-radius:6px;padding:2px 6px;transform:rotate(4deg);background:rgba(192,57,43,.06);}
+  .gcard .logmini{align-self:flex-start;margin-top:2px;font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--moss);background:none;border:1px solid var(--line);border-radius:8px;padding:5px 9px;transition:background .15s,color .15s;}
+  .gcard .logmini:hover{background:var(--moss);color:#fff;border-color:var(--moss);}
+  .gcard .seenct{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--bark-soft);letter-spacing:.04em;}
+
+  .abund{margin:2px 0 0;}
+  .ab-cap{font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--bark-soft);margin-bottom:4px;}
+  .ab-track{display:flex;align-items:flex-end;gap:2px;height:34px;}
+  .ab-col{flex:1;display:flex;align-items:flex-end;height:34px;}
+  .ab-bar{width:100%;background:var(--sage);border-radius:2px 2px 0 0;min-height:3px;}
+  .ab-col.off .ab-bar{background:var(--sage-soft);opacity:.4;}
+  .ab-col.now .ab-bar{background:var(--cardinal);}
+  .ab-labels{display:flex;gap:2px;margin-top:3px;}
+  .ab-labels span{flex:1;text-align:center;font-family:"JetBrains Mono",monospace;font-size:8.5px;color:var(--bark-soft);line-height:1;}
+  .ab-labels span.now{color:var(--cardinal);font-weight:500;}
+  .dy-labels{display:flex;justify-content:space-between;margin-top:3px;font-family:"JetBrains Mono",monospace;font-size:8.5px;color:var(--bark-soft);}
+
+  .life{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:11px;}
+  .lcard{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);}
+  .lcard .dot{width:18px;height:18px;}
+  .lcard .name{font-family:"DM Serif Display",serif;font-size:18px;line-height:1.05;}
+  .lcard .meta{font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--bark-soft);letter-spacing:.04em;margin-top:2px;}
+  .lcard .total{margin-left:auto;font-family:"DM Serif Display",serif;font-size:24px;color:var(--moss-deep);}
+
+  .nowlist{display:flex;flex-direction:column;gap:9px;}
+  .nowcard{display:flex;align-items:center;gap:13px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);transition:transform .08s,border-color .15s;cursor:pointer;}
+  .nowcard:hover{transform:translateY(-2px);border-color:var(--sage);}
+  .nowcard .dot{width:16px;height:16px;}
+  .nc-body{flex:1;min-width:0;}
+  .nc-name{font-family:"DM Serif Display",serif;font-size:18px;line-height:1.1;}
+  .nc-sub{font-size:12.5px;color:var(--bark-soft);}
+
+  .seasonline{font-size:13px;color:var(--bark);margin:-4px 0 14px;}
+  .seasonline b{color:var(--moss-deep);}
+
+  /* detail modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(30,46,36,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50;}
+  .modal{background:var(--card);max-width:560px;width:100%;max-height:88vh;overflow:auto;border-radius:18px;padding:22px 22px 24px;position:relative;box-shadow:0 30px 70px -30px rgba(30,46,36,.7);animation:pop .2s ease;}
+  @keyframes pop{from{opacity:0;transform:scale(.97);}to{opacity:1;transform:none;}}
+  .modal-x{position:absolute;top:13px;right:13px;width:34px;height:34px;border-radius:9px;background:var(--paper-2);color:var(--bark);font-size:20px;line-height:1;}
+  .modal-x:hover{background:var(--sage);color:#fff;}
+  .d-head{display:flex;align-items:center;gap:12px;padding-right:38px;}
+  .d-head .dot{width:22px;height:22px;}
+  .d-name{font-family:"DM Serif Display",serif;font-size:25px;line-height:1.02;}
+  .d-sci{font-style:italic;color:var(--bark-soft);font-size:13px;}
+  .d-best{font-size:13.5px;color:var(--moss-deep);background:rgba(47,94,63,.08);border-radius:10px;padding:9px 12px;margin:14px 0 4px;}
+  .d-section{margin-top:14px;}
+  .d-lbl{font-family:"JetBrains Mono",monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--bark-soft);margin-bottom:5px;}
+  .info{font-size:13.5px;color:var(--ink-soft);margin-top:11px;}
+  .info .ilabel{display:block;font-family:"JetBrains Mono",monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--bark);margin-bottom:2px;}
+  .d-fact{font-size:13px;color:var(--bark);font-style:italic;border-top:1px dashed var(--line);padding-top:11px;margin-top:14px;}
+  .d-log{margin-top:16px;width:100%;text-align:center;}
+
+  footer{margin-top:36px;text-align:center;font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.08em;color:var(--bark-soft);}
+
+  @media (max-width:560px){.btn-log{flex:1 1 100%;}.stat{min-width:64px;padding:8px 10px;}}
+  @media (prefers-reduced-motion:reduce){.panel,.modal{animation:none !important;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+        <path d="M14 40c0-9 7-17 17-17 7 0 11 3 14 3 4 0 6-2 7-5 1 6-1 10-4 12 3 1 6 4 6 9 0 8-8 13-19 13-13 0-21-6-21-15z" fill="currentColor"/>
+        <circle cx="44" cy="31" r="2.2" fill="#EBEDE1"/>
+        <path d="M52 28l8-3-6 6z" fill="#C0392B"/>
+        <path d="M14 40c-3 1-7 1-10-1 4-1 6-3 7-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+      </svg>
+      <div><h1>Backyard Birds</h1><div class="loc">Northwest Woods · Shawnee, KS</div></div>
+    </div>
+    <div class="tally">
+      <div class="stat"><div class="n" id="stat-species">0</div><div class="l">Species</div></div>
+      <div class="stat"><div class="n" id="stat-sightings">0</div><div class="l">Sightings</div></div>
+    </div>
+  </header>
+
+  <section class="logger">
+    <div class="today" id="today">—</div>
+    <div class="sunline" id="sunline"></div>
+    <h2>What did you spot?</h2>
+    <div class="row">
+      <div class="field">
+        <input type="text" id="species-input" placeholder="Type a bird name…" autocomplete="off" aria-label="Bird species">
+        <div class="suggest" id="suggest" hidden></div>
+      </div>
+      <div class="countwrap">
+        <label for="count-input">How many</label>
+        <input type="number" id="count-input" min="1" value="1" aria-label="Count">
+      </div>
+      <button class="btn-log" id="log-btn">Log it</button>
+    </div>
+    <input type="text" id="note-input" placeholder="Optional note — e.g. &quot;pair at the thistle feeder&quot;" aria-label="Note">
+    <div class="chips" id="chips"><span class="lbl">Tap a regular — logs one right away</span></div>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="journal" role="tab">Journal <span class="ct" id="ct-journal"></span></button>
+    <button class="tab" data-tab="now" role="tab">Right Now</button>
+    <button class="tab" data-tab="guide" role="tab">Field Guide <span class="ct" id="ct-guide"></span></button>
+    <button class="tab" data-tab="life" role="tab">Life List <span class="ct" id="ct-life"></span></button>
+  </nav>
+
+  <div class="panel" id="panel"></div>
+  <footer id="foot">A field journal for the Adkins backyard 🪶</footer>
+</div>
+
+<div class="modal-overlay" id="detail" hidden><div class="modal" id="detail-card"></div></div>
+
+<script>
+/* ---------------- KC-metro backyard species ----------------
+   ab = monthly abundance Jan..Dec (0-4); profile = daily activity rhythm */
+const SPECIES = [
+  {n:"Northern Cardinal", s:"Cardinalis cardinalis", season:"Resident", size:"Medium", c:"#C0392B", feeder:true, profile:"songbird", ab:[3,3,3,4,4,4,4,4,4,4,3,3], hint:"Brilliant red male with a crest and black mask; female warm tan.", fact:"Pairs often mate for life and sing all year round.", food:"Sunflower seed, safflower, cracked corn", voice:"Clear whistled 'birdy-birdy-birdy' and 'cheer-cheer-cheer'", habitat:"Shrubs, hedges, and low platform feeders at the edges", behavior:"Often the first bird singing and the last at the feeder at dusk."},
+  {n:"Blue Jay", s:"Cyanocitta cristata", season:"Resident", size:"Medium", c:"#4A77B5", feeder:true, profile:"morning", ab:[3,3,3,3,3,3,3,3,4,4,3,3], hint:"Bold blue with white and black markings, prominent crest.", fact:"Can mimic a hawk's call to scare other birds off the feeder.", food:"Peanuts in the shell, sunflower seed, acorns, suet", voice:"Harsh 'jay-jay' screams, plus surprisingly soft musical notes", habitat:"Oaks and tall trees; platform and tray feeders", behavior:"Caches acorns by the hundreds; loud, bold, and watchful."},
+  {n:"American Robin", s:"Turdus migratorius", season:"Resident", size:"Medium", c:"#C1502E", feeder:false, profile:"songbird", ab:[3,3,4,4,4,3,3,3,3,3,3,3], hint:"Gray back with a brick-orange breast.", fact:"Often the first songbird you hear before dawn in spring.", food:"Earthworms and berries; rarely feeders (try mealworms or fruit)", voice:"Liquid caroling — 'cheerily, cheer-up, cheerio'", habitat:"Open lawn, under shrubs, and fruiting trees", behavior:"Runs and stops across the lawn, cocking its head to find worms."},
+  {n:"Black-capped Chickadee", s:"Poecile atricapillus", season:"Resident", size:"Tiny", c:"#5C5650", feeder:true, profile:"morning", ab:[3,3,3,3,3,3,3,3,3,3,3,3], hint:"Black cap and bib, white cheeks, tiny and round.", fact:"KC sits where Black-capped and Carolina Chickadees meet and even hybridize.", food:"Sunflower seed, suet, peanuts", voice:"Whistled 'fee-bee'; the namesake 'chick-a-dee-dee-dee'", habitat:"Trees and shrubs; comes to any feeder", behavior:"Grabs one seed and flies off to a branch to hammer it open."},
+  {n:"Tufted Titmouse", s:"Baeolophus bicolor", season:"Resident", size:"Small", c:"#9296A0", feeder:true, profile:"morning", ab:[3,3,3,3,3,3,3,3,3,3,3,3], hint:"Soft gray with a pointed crest and big dark eyes.", fact:"Will pull fur from sleeping mammals to line its nest.", food:"Sunflower seed, suet, peanuts", voice:"Clear whistled 'peter-peter-peter'", habitat:"Wooded edges and feeders", behavior:"Bold at feeders; often travels in mixed flocks with chickadees."},
+  {n:"White-breasted Nuthatch", s:"Sitta carolinensis", season:"Resident", size:"Small", c:"#6B7079", feeder:true, profile:"morning", ab:[3,3,2,2,2,2,2,2,2,3,3,3], hint:"Blue-gray above, white face; walks head-first down tree trunks.", fact:"Jams seeds into bark and hammers them open — 'hatching' them.", food:"Sunflower seed, suet, peanuts", voice:"Nasal, low 'yank-yank-yank'", habitat:"Tree trunks and large branches", behavior:"Creeps head-first down trunks, the only feeder bird that does."},
+  {n:"Downy Woodpecker", s:"Dryobates pubescens", season:"Resident", size:"Small", c:"#2B2B2B", feeder:true, profile:"morning", ab:[3,3,3,2,2,2,2,2,2,3,3,3], hint:"Small black-and-white woodpecker; male has a red nape patch.", fact:"The smallest woodpecker in North America.", food:"Suet, sunflower seed, peanuts", voice:"Sharp 'pik'; a descending whinny", habitat:"Tree trunks, small branches, suet feeders", behavior:"Works thin stems and weed stalks other woodpeckers can't."},
+  {n:"Red-bellied Woodpecker", s:"Melanerpes carolinus", season:"Resident", size:"Medium", c:"#C0392B", feeder:true, profile:"morning", ab:[3,3,3,3,2,2,2,2,2,3,3,3], hint:"Barred black-and-white back with a bright red cap.", fact:"The red 'belly' is faint — the red cap fools nearly everyone.", food:"Suet, peanuts, sunflower, fruit", voice:"Rolling 'churr' and a chuckling 'cha-cha-cha'", habitat:"Tree trunks; suet and seed feeders", behavior:"Wedges food into bark crevices to store and crack it."},
+  {n:"Mourning Dove", s:"Zenaida macroura", season:"Resident", size:"Medium", c:"#A89B86", feeder:true, profile:"dawn_dusk", ab:[3,3,3,4,4,4,4,4,4,4,3,3], hint:"Slim soft-brown dove with a long pointed tail.", fact:"Their wings whistle on takeoff; the cooing is often mistaken for an owl.", food:"Millet and cracked corn scattered on the ground", voice:"Mournful 'coo-OO-oo-oo-oo'", habitat:"Open ground under feeders, wires, and rooftops", behavior:"Feeds on the ground in the open, mostly morning and evening."},
+  {n:"House Finch", s:"Haemorhous mexicanus", season:"Resident", size:"Small", c:"#B5483B", feeder:true, profile:"even", ab:[3,3,3,3,3,3,3,3,3,3,3,3], hint:"Streaky brown; male has a rosy-red head and chest.", fact:"A western native released in NYC in the 1940s that spread across the country.", food:"Sunflower hearts and nyjer (thistle) seed", voice:"Long, twittering warble ending in a buzzy note", habitat:"Feeders, shrubs, and eaves", behavior:"Gathers in chattering groups and lingers at feeders."},
+  {n:"American Goldfinch", s:"Spinus tristis", season:"Resident", size:"Small", c:"#E6C229", feeder:true, profile:"even", ab:[3,3,3,2,2,2,3,3,3,3,4,4], hint:"Summer male is brilliant yellow with a black cap; drab olive in winter.", fact:"A strict vegetarian that nests late to time it with thistle seed.", food:"Nyjer (thistle) and sunflower hearts", voice:"Sweet canary-like song; a bouncy 'po-ta-to-chip' in flight", habitat:"Thistle feeders and weedy patches", behavior:"Feeds calmly through the day; bounding, roller-coaster flight."},
+  {n:"Dark-eyed Junco", s:"Junco hyemalis", season:"Winter", size:"Small", c:"#4B4F58", feeder:true, profile:"even", ab:[4,4,3,1,0,0,0,0,0,1,3,4], hint:"Slate-gray hood, white belly, pale pink bill.", fact:"Nicknamed 'snowbirds' — they show up as the weather turns cold.", food:"Millet, cracked corn, and sunflower — on the ground", voice:"Even, musical trill; sharp 'tik' call notes", habitat:"Ground beneath feeders and shrubs", behavior:"Scratches in leaf litter and flashes white outer tail feathers."},
+  {n:"House Sparrow", s:"Passer domesticus", season:"Resident", size:"Small", c:"#8B6F47", feeder:true, profile:"even", ab:[3,3,3,3,3,3,3,3,3,3,3,3], hint:"Chunky; male has a gray cap and black bib.", fact:"Not a native sparrow — introduced from Europe in the 1850s.", food:"Millet, cracked corn, bread scraps, mixed seed", voice:"Monotonous chirps and cheeps", habitat:"Buildings, hedges, and feeders", behavior:"Noisy and social; dust-bathes in chattering groups."},
+  {n:"European Starling", s:"Sturnus vulgaris", season:"Resident", size:"Medium", c:"#3A3A45", feeder:false, profile:"even", ab:[4,4,3,3,3,3,3,3,3,4,4,4], hint:"Glossy iridescent black with speckles; yellow bill in spring.", fact:"Every North American starling descends from ~100 birds released in 1890s NYC.", food:"Suet, scraps, and mixed seed", voice:"Whistles, clicks, rattles — and mimicry of other birds", habitat:"Lawns, rooftops, and any feeder", behavior:"Probes lawns for grubs; descends in noisy, swirling flocks."},
+  {n:"Common Grackle", s:"Quiscalus quiscula", season:"Summer", size:"Medium", c:"#2E3B47", feeder:false, profile:"morning", ab:[1,2,4,4,4,3,3,3,3,2,1,1], hint:"Long-tailed and glossy with an iridescent purple-blue head and pale eye.", fact:"Travels in big noisy flocks and raids feeders in gangs.", food:"Cracked corn, mixed seed, and scraps on the ground", voice:"Harsh, rising 'readle-eak' like a rusty gate", habitat:"Lawns, tall trees, and ground feeders", behavior:"Struts across the lawn and raids feeders in bossy groups."},
+  {n:"Carolina Wren", s:"Thryothorus ludovicianus", season:"Resident", size:"Tiny", c:"#9C5E33", feeder:true, profile:"songbird", ab:[2,2,3,3,3,3,3,3,3,3,2,2], hint:"Warm rusty brown with a bold white eyebrow and cocked-up tail.", fact:"A tiny body with a huge voice — sings 'teakettle-teakettle' all year.", food:"Suet, peanut bits, and mealworms", voice:"Loud, rolling 'teakettle-teakettle-teakettle'", habitat:"Brush piles, dense shrubs, and low cover", behavior:"Pokes through tangles and woodpiles with its tail cocked up."},
+  {n:"Eastern Bluebird", s:"Sialia sialis", season:"Resident", size:"Small", c:"#3B6BB0", feeder:false, profile:"morning", ab:[2,2,3,3,3,3,3,3,3,3,3,2], hint:"Royal-blue back with a rusty-orange breast.", fact:"Takes readily to nest boxes — a backyard box can host two broods a season.", food:"Mealworms and berries; will use nest boxes", voice:"Soft, musical 'chur-lee, chur-lee'", habitat:"Open lawn edges, fences, and nest boxes", behavior:"Drops from a low perch to grab insects off the ground."},
+  {n:"Northern Flicker", s:"Colaptes auratus", season:"Resident", size:"Medium", c:"#B08D57", feeder:false, profile:"morning", ab:[2,2,3,3,2,2,2,2,3,3,3,2], hint:"Brown barred woodpecker with a black bib and white rump in flight.", fact:"Often forages on the ground hunting ants.", food:"Suet; ants and beetles on the ground", voice:"Loud, ringing 'wick-wick-wick'; a single 'kleer'", habitat:"Lawns and open ground, plus large trunks", behavior:"The woodpecker you'll most often see feeding on the ground."},
+  {n:"Red-winged Blackbird", s:"Agelaius phoeniceus", season:"Resident", size:"Medium", c:"#1F1F22", feeder:false, profile:"songbird", ab:[2,3,4,4,4,4,3,3,3,2,2,2], hint:"Glossy black male with red-and-yellow shoulder patches.", fact:"Males flash their red epaulets to defend territory.", food:"Cracked corn, mixed seed, and suet on the ground", voice:"Gurgling, ringing 'conk-la-ree!'", habitat:"Marsh edges, wet spots, and ground feeders", behavior:"Males sing from high cattails or wires, flaring red shoulders."},
+  {n:"Indigo Bunting", s:"Passerina cyanea", season:"Summer", size:"Small", c:"#3B4FB0", feeder:false, profile:"songbird", ab:[0,0,0,1,3,4,4,4,3,1,0,0], hint:"Male is a vivid all-over blue in summer light.", fact:"Migrates at night, navigating by the stars.", food:"Nyjer and small seed; sprouting weeds and seeds", voice:"Bright, paired phrases — 'sweet-sweet, chew-chew, sweet-sweet'", habitat:"Brushy edges, weedy fields, and tall shrubs", behavior:"Males sing tirelessly from the highest exposed perch around."},
+  {n:"Baltimore Oriole", s:"Icterus galbula", season:"Summer", size:"Small", c:"#E8731C", feeder:true, profile:"songbird", ab:[0,0,0,2,4,4,3,3,2,0,0,0], hint:"Flame-orange and black male; offer orange halves or grape jelly.", fact:"Weaves a hanging sock-shaped nest high in shade trees.", food:"Orange halves, grape jelly, and nectar", voice:"Rich, flutelike whistled phrases", habitat:"Tall shade trees; jelly and orange feeders", behavior:"Sips jelly and nectar; weaves a deep hanging pouch nest."},
+  {n:"Ruby-throated Hummingbird", s:"Archilochus colubris", season:"Summer", size:"Tiny", c:"#2E8B57", feeder:true, profile:"dawn_dusk", ab:[0,0,0,1,3,3,3,4,4,2,0,0], hint:"Tiny emerald-green flier; male has a ruby throat.", fact:"The only hummingbird that regularly nests in the eastern U.S.", food:"Nectar (4 parts water to 1 sugar) and tiny insects", voice:"High squeaky chips; a buzzy wing hum", habitat:"Nectar feeders and tubular red/orange flowers", behavior:"Hovers and darts; males dive in big U-shaped display flights."},
+  {n:"Cedar Waxwing", s:"Bombycilla cedrorum", season:"Resident", size:"Small", c:"#C9A66B", feeder:false, profile:"even", ab:[3,3,3,2,2,2,2,2,2,3,3,3], hint:"Sleek tan crest, black mask, red wing tips and a yellow tail band.", fact:"Flocks devour berries and can get tipsy on fermented fruit.", food:"Berries and fruit; plant native berry shrubs (no feeders)", voice:"Very high, thin 'seee' whistles", habitat:"Fruiting trees and shrubs", behavior:"Moves in tight flocks and passes berries down a line, beak to beak."},
+  {n:"Eastern Towhee", s:"Pipilo erythrophthalmus", season:"Summer", size:"Small", c:"#2B2B2B", feeder:false, profile:"songbird", ab:[1,1,2,3,3,3,3,3,3,3,2,1], hint:"Black hood, rusty sides, white belly and a red eye.", fact:"Scratches through leaf litter with a two-footed backward hop.", food:"Millet, cracked corn, and sunflower — on the ground", voice:"'Drink-your-TEA!' and a sharp 'chewink'", habitat:"Brushy edges and leaf litter under shrubs", behavior:"Double-scratches backward with both feet to flip up leaves."},
+  {n:"Chipping Sparrow", s:"Spizella passerina", season:"Summer", size:"Tiny", c:"#9C5E33", feeder:true, profile:"morning", ab:[0,0,1,3,4,3,3,3,3,2,1,0], hint:"Small clean sparrow with a rusty cap and dark eye line.", fact:"Often lines its nest with animal hair.", food:"Millet and sunflower hearts on or near the ground", voice:"A long, dry, mechanical trill on one pitch", habitat:"Lawn edges, low shrubs, and conifers", behavior:"Feeds on open ground but bolts to cover at any movement."},
+  {n:"Brown-headed Cowbird", s:"Molothrus ater", season:"Summer", size:"Small", c:"#4A3B2E", feeder:false, profile:"morning", ab:[1,1,2,4,4,4,3,2,2,1,1,1], hint:"Male glossy black with a brown head; female plain gray-brown.", fact:"Lays its eggs in other birds' nests and lets them do the raising.", food:"Mixed seed and cracked corn on the ground", voice:"Liquid bubbling gurgle followed by a thin whistle", habitat:"Open lawns and ground feeders", behavior:"A brood parasite — never builds a nest of its own."},
+  {n:"American Crow", s:"Corvus brachyrhynchos", season:"Resident", size:"Large", c:"#2B2B2B", feeder:false, profile:"morning", ab:[3,3,3,3,3,3,3,3,3,3,3,3], hint:"Large all-black bird, broad fan tail, hoarse caw.", fact:"Crows recognize individual human faces — and hold grudges.", food:"Scraps, peanuts, and corn (not a typical feeder visitor)", voice:"The familiar harsh 'caw-caw-caw'", habitat:"Treetops, lawns, and open ground", behavior:"Smart and social; family groups forage and watch together."},
+  {n:"Great Crested Flycatcher", s:"Myiarchus crinitus", season:"Summer", size:"Medium", c:"#8A7B4F", feeder:false, profile:"morning", ab:[0,0,0,1,3,3,3,3,2,1,0,0], hint:"Gray head and throat, lemon-yellow belly, rusty in the tail.", fact:"Often weaves a shed snakeskin into its nest cavity.", food:"Insects caught in the air (no feeders); uses nest boxes", voice:"A loud, rising 'wheep!' and a rolling 'prrrt'", habitat:"High in leafy treetops", behavior:"Sallies out from a high perch to snatch flying insects."},
+  {n:"Turkey Vulture", s:"Cathartes aura", season:"Summer", size:"Large", c:"#3A2E28", feeder:false, profile:"midday", ab:[0,0,1,2,3,3,3,3,3,2,1,0], hint:"Big dark soaring bird; small red head, wings held in a shallow V.", fact:"Finds carrion by smell — a rare talent among birds.", food:"Carrion (does not visit yards to feed)", voice:"Mostly silent; only hisses and grunts", habitat:"High overhead, soaring on rising thermals", behavior:"Rocks side to side on raised wings, riding warm midday air."},
+  {n:"Eastern Wood-Pewee", s:"Contopus virens", season:"Summer", size:"Small", c:"#6E6A5E", feeder:false, profile:"even", ab:[0,0,0,1,3,3,3,3,3,2,0,0], hint:"Plain olive-gray flycatcher; sings its own name, 'pee-a-wee'.", fact:"Keeps singing through midday heat when other birds fall quiet.", food:"Flying insects (no feeders)", voice:"A plaintive, slurred 'pee-a-wee... pee-yer'", habitat:"Mid-canopy, on bare perches beneath the leaves", behavior:"Returns to the same perch between sallies; sings even at midday."},
+];
+const SPECIES_BY_NAME = Object.fromEntries(SPECIES.map(b=>[b.n.toLowerCase(), b]));
+const QUICK = ["Northern Cardinal","Black-capped Chickadee","American Goldfinch","Blue Jay","Mourning Dove","House Finch","Tufted Titmouse","Red-bellied Woodpecker"];
+const MONTHS = ["J","F","M","A","M","J","J","A","S","O","N","D"];
+const LAT = 39.0228, LON = -94.7958; // Shawnee, KS
+
+/* ---------------- Storage (in-chat via window.storage, on GitHub Pages via localStorage) ---------------- */
+const store = {
+  hasArtifact(){ return typeof window!=="undefined" && !!window.storage; },
+  async get(k){
+    if(this.hasArtifact()){ try{ const r=await window.storage.get(k); return (r&&r.value!=null)?r.value:null; }catch(e){ return null; } }
+    try{ return localStorage.getItem(k); }catch(e){ return null; }
+  },
+  async set(k,v){
+    if(this.hasArtifact()){ try{ await window.storage.set(k,v); return true; }catch(e){ return false; } }
+    try{ localStorage.setItem(k,v); return true; }catch(e){ return false; }
+  }
+};
+const KEY = "backyard-bird-sightings";
+let sightings = [];
+
+/* ---------- Supabase sync ---------- */
+const SUPABASE_URL = "https://bhnupipukgotsecawnhl.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJobnVwaXB1a2dvdHNlY2F3bmhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MzUyNTAsImV4cCI6MjA5NjUxMTI1MH0.HPgjzZK2Ow-45kbD8DFvM5cMPaVqnuhc1tCv7wvFlOg";
+const TABLE = "bird_sightings";
+let sb = null;
+
+function initSupabase(){
+  try{
+    if(store.hasArtifact()) return false;  // in-chat preview sandbox blocks fetch/websocket — run local-only here
+    if(window.supabase && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY.indexOf("PASTE_")!==0){
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      return true;
+    }
+  }catch(e){ console.warn("Supabase init failed:", e); }
+  return false;
+}
+function rowToEntry(r){ return { id:r.id, species:r.species, sci:r.sci||"", color:r.color||"#5C4A38", count:r.count||1, note:r.note||"", date:r.date }; }
+function entryToRow(e){ return { id:e.id, species:e.species, sci:e.sci, color:e.color, count:e.count, note:e.note, date:e.date }; }
+async function cacheLocal(){ await store.set(KEY, JSON.stringify(sightings)); }
+async function loadLocal(){
+  const raw = await store.get(KEY);
+  if(raw){ try{ sightings = JSON.parse(raw); }catch(e){ sightings = []; } }
+}
+async function pullFromCloud(){
+  if(!sb) return;
+  try{
+    const { data, error } = await sb.from(TABLE).select("*");
+    if(error){ console.warn("Supabase fetch:", error.message); return; }
+    sightings = (data||[]).map(rowToEntry);
+    await cacheLocal();
+    renderAll();
+  }catch(e){ console.warn("Cloud unreachable — using local cache:", e && e.message); }
+}
+function subscribeCloud(){
+  if(!sb) return;
+  try{
+    sb.channel("bird_sightings_rt")
+      .on("postgres_changes", {event:"*", schema:"public", table:TABLE}, payload=>{
+        const t = payload.eventType, n = payload.new, o = payload.old;
+        if(t==="INSERT"){ if(!sightings.some(s=>s.id===n.id)) sightings.push(rowToEntry(n)); }
+        else if(t==="UPDATE"){ const i=sightings.findIndex(s=>s.id===n.id); if(i>=0) sightings[i]=rowToEntry(n); else sightings.push(rowToEntry(n)); }
+        else if(t==="DELETE"){ sightings = sightings.filter(s=>s.id!==(o&&o.id)); }
+        cacheLocal(); renderAll();
+      })
+      .subscribe();
+  }catch(e){ console.warn("Realtime unavailable:", e && e.message); }
+}
+function setSyncBadge(synced){
+  document.getElementById("foot").textContent = (synced ? "Synced across your devices" : "Saved on this device") + " · Adkins backyard 🪶";
+}
+
+/* ---------------- Sun times (compact SunCalc) + daily activity ---------------- */
+const RAD=Math.PI/180, DAYMS=864e5, J1970=2440588, J2000=2451545, E=RAD*23.4397;
+function toJulian(d){ return d.valueOf()/DAYMS - 0.5 + J1970; }
+function fromJulian(j){ return new Date((j + 0.5 - J1970)*DAYMS); }
+function toDays(d){ return toJulian(d) - J2000; }
+function solarMeanAnomaly(d){ return RAD*(357.5291 + 0.98560028*d); }
+function eclipticLongitude(M){ const C=RAD*(1.9148*Math.sin(M)+0.02*Math.sin(2*M)+0.0003*Math.sin(3*M)); return M + C + RAD*102.9372 + Math.PI; }
+function declination(L){ return Math.asin(Math.sin(E)*Math.sin(L)); }
+function hourAngle(h,phi,d){ return Math.acos((Math.sin(h)-Math.sin(phi)*Math.sin(d))/(Math.cos(phi)*Math.cos(d))); }
+function sunTimes(date, lat, lng){
+  const lw=RAD*-lng, phi=RAD*lat, d=toDays(date), J0=0.0009;
+  const n=Math.round(d - J0 - lw/(2*Math.PI));
+  const ds=J0 + (0 + lw)/(2*Math.PI) + n;
+  const M=solarMeanAnomaly(ds), L=eclipticLongitude(M), dec=declination(L);
+  const Jnoon=J2000 + ds + 0.0053*Math.sin(M) - 0.0069*Math.sin(2*L);
+  const w=hourAngle(-0.833*RAD, phi, dec);
+  const a=J0 + (w + lw)/(2*Math.PI) + n;
+  const Jset=J2000 + a + 0.0053*Math.sin(M) - 0.0069*Math.sin(2*L);
+  const Jrise=Jnoon - (Jset - Jnoon);
+  return { sunrise:fromJulian(Jrise), sunset:fromJulian(Jset) };
+}
+let SUN = { srH:6, ssH:20, sunrise:null, sunset:null };
+let DAILY = {};
+function computeSun(){
+  try{
+    const t=sunTimes(new Date(), LAT, LON);
+    if(t.sunrise && !isNaN(t.sunrise) && t.sunset && !isNaN(t.sunset)){
+      SUN.sunrise=t.sunrise; SUN.sunset=t.sunset;
+      SUN.srH=t.sunrise.getHours()+t.sunrise.getMinutes()/60;
+      SUN.ssH=t.sunset.getHours()+t.sunset.getMinutes()/60;
+    }
+  }catch(e){ /* keep defaults */ }
+  DAILY={};
+  for(const b of SPECIES) DAILY[b.n]=dailyCurve(b.profile, SUN.srH, SUN.ssH);
+}
+function gauss(h,c,w){ return Math.exp(-((h-c)*(h-c))/(2*w*w)); }
+function dailyCurve(profile, SR, SS){
+  const noon=(SR+SS)/2, arr=[];
+  for(let h=0; h<24; h++){
+    let v=0;
+    if(profile==="songbird") v=1.0*gauss(h,SR+0.4,1.1)+0.5*gauss(h,SS-1.0,1.4);
+    else if(profile==="morning") v=0.95*gauss(h,SR+1.3,2.0)+0.35*gauss(h,SS-1.5,1.6);
+    else if(profile==="even"){ const day=(h>=SR-0.5 && h<=SS+0.3)?0.55:0; v=day+0.35*gauss(h,SR+0.6,1.2); }
+    else if(profile==="dawn_dusk") v=0.95*gauss(h,SR+0.2,1.0)+0.9*gauss(h,SS-0.4,1.2);
+    else if(profile==="midday") v=0.95*gauss(h,noon,2.6);
+    if(h<SR-1.2 || h>SS+1.0) v*=0.05;
+    arr.push(v);
+  }
+  const max=Math.max.apply(null, arr.concat(0.0001));
+  return arr.map(x=>x/max);
+}
+function fmtTime(d){ return d ? d.toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}) : "—"; }
+function bestTime(profile){
+  const sr=fmtTime(SUN.sunrise), ss=fmtTime(SUN.sunset);
+  if(profile==="songbird") return "Most active at first light (around "+sr+"), with a smaller burst near dusk. Quiet through midday.";
+  if(profile==="morning") return "Busiest through the morning after sunrise (around "+sr+"), then slows by afternoon.";
+  if(profile==="even") return "Active steadily through daylight — comes to feeders all day long.";
+  if(profile==="dawn_dusk") return "Two peaks: early morning (around "+sr+") and again toward dusk (around "+ss+").";
+  if(profile==="midday") return "Most visible at midday once thermals build; rarely seen at dawn.";
+  return "Active during daylight hours.";
+}
+
+/* ---------------- Helpers ---------------- */
+function curMonth(){ return new Date().getMonth(); }
+function statusTag(b){
+  const v=b.ab[curMonth()];
+  if(v>=4) return {t:"Peak now", cls:"peak"};
+  if(v>=2) return {t:"Common now", cls:"now"};
+  if(v>=1) return {t:"Around now", cls:"now"};
+  return {t:b.season+" only", cls:""};
+}
+function abundanceBar(ab){
+  const now=curMonth(), max=4, H=34;
+  const cols=ab.map((v,i)=>{
+    const px=v===0?3:Math.max(8, Math.round((v/max)*H));
+    const cls=(i===now?"now ":"")+(v===0?"off":"");
+    return '<div class="ab-col '+cls.trim()+'"><div class="ab-bar" style="height:'+px+'px"></div></div>';
+  }).join("");
+  const labels=MONTHS.map((l,i)=>'<span class="'+(i===now?"now":"")+'">'+l+'</span>').join("");
+  return '<div class="abund"><div class="ab-track">'+cols+'</div><div class="ab-labels">'+labels+'</div></div>';
+}
+function dailyStrip(curve){
+  const nowH=new Date().getHours();
+  const cols=curve.map((v,h)=>{
+    const px=Math.max(3, Math.round(v*34));
+    return '<div class="ab-col '+(h===nowH?"now":"")+'"><div class="ab-bar" style="height:'+px+'px"></div></div>';
+  }).join("");
+  return '<div class="abund"><div class="ab-track">'+cols+'</div><div class="dy-labels"><span>12a</span><span>6a</span><span>noon</span><span>6p</span><span>12a</span></div></div>';
+}
+function fmtDay(iso){
+  const d=new Date(iso), today=new Date(); today.setHours(0,0,0,0);
+  const that=new Date(d); that.setHours(0,0,0,0);
+  const diff=Math.round((today-that)/86400000);
+  const long=d.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"});
+  if(diff===0) return "Today · "+long;
+  if(diff===1) return "Yesterday · "+long;
+  return long + (d.getFullYear()!==today.getFullYear()? ", "+d.getFullYear():"");
+}
+function dayKey(iso){ const d=new Date(iso); return d.getFullYear()+"-"+d.getMonth()+"-"+d.getDate(); }
+function meta(name){ return SPECIES_BY_NAME[name.toLowerCase()] || {s:"", c:"#5C4A38", season:"", size:""}; }
+function lifeList(){
+  const map=new Map();
+  for(const e of sightings){
+    const k=e.species;
+    if(!map.has(k)) map.set(k,{species:k,total:0,first:e.date,last:e.date});
+    const o=map.get(k); o.total+=e.count;
+    if(e.date<o.first)o.first=e.date; if(e.date>o.last)o.last=e.date;
+  }
+  return [...map.values()].sort((a,b)=>b.total-a.total);
+}
+function seenSet(){ return new Set(sightings.map(e=>e.species)); }
+function escapeHtml(str){ return String(str).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------------- Logging ---------------- */
+async function logBird(name, count, note){
+  name=(name||"").trim(); if(!name) return;
+  count=Math.max(1, parseInt(count,10)||1);
+  const b=meta(name);
+  const id=Date.now()+"-"+Math.random().toString(36).slice(2,7);
+  const entry={ id, species:b.n||name, sci:b.s||"", color:b.c||"#5C4A38", count, note:(note||"").trim(), date:new Date().toISOString() };
+  sightings.push(entry);
+  await cacheLocal();
+  renderAll();
+  if(sb){ try{ const { error } = await sb.from(TABLE).insert(entryToRow(entry)); if(error) console.warn("Supabase insert:", error.message); }catch(e){ console.warn("insert failed:", e&&e.message); } }
+}
+async function deleteSighting(id){
+  sightings=sightings.filter(x=>x.id!==id);
+  await cacheLocal();
+  renderAll();
+  if(sb){ try{ const { error } = await sb.from(TABLE).delete().eq("id",id); if(error) console.warn("Supabase delete:", error.message); }catch(e){ console.warn("delete failed:", e&&e.message); } }
+}
+
+/* ---------------- Rendering ---------------- */
+let activeTab="journal";
+function renderStats(){
+  document.getElementById("stat-species").textContent=new Set(sightings.map(e=>e.species)).size;
+  document.getElementById("stat-sightings").textContent=sightings.reduce((a,e)=>a+e.count,0);
+  document.getElementById("ct-journal").textContent=sightings.length?"("+sightings.length+")":"";
+  document.getElementById("ct-guide").textContent="("+seenSet().size+"/"+SPECIES.length+")";
+  document.getElementById("ct-life").textContent=lifeList().length?"("+lifeList().length+")":"";
+}
+function renderChips(){
+  const wrap=document.getElementById("chips");
+  wrap.innerHTML='<span class="lbl">Tap a regular — logs one right away</span>';
+  QUICK.forEach(name=>{
+    const b=meta(name);
+    const btn=document.createElement("button");
+    btn.className="chip";
+    btn.innerHTML='<span class="dot" style="background:'+b.c+'"></span>'+name;
+    btn.onclick=()=>logBird(name,1);
+    wrap.appendChild(btn);
+  });
+}
+function renderJournal(){
+  if(!sightings.length){
+    return '<div class="empty"><div class="big">No sightings yet</div>Spot something out the window? Tap a bird above, or type a name and log it. Your list builds from here.</div>';
+  }
+  const sorted=[...sightings].sort((a,b)=>b.date.localeCompare(a.date));
+  let html="",lastDay=null;
+  for(const e of sorted){
+    const dk=dayKey(e.date);
+    if(dk!==lastDay){ html+='<div class="day-head">'+fmtDay(e.date)+'</div>'; lastDay=dk; }
+    html+='<div class="entry">'
+      +'<span class="dot" style="background:'+e.color+'"></span>'
+      +'<div class="body"><div class="name">'+escapeHtml(e.species)+'</div>'
+      +(e.sci?'<div class="sci">'+escapeHtml(e.sci)+'</div>':'')
+      +(e.note?'<div class="note">'+escapeHtml(e.note)+'</div>':'')
+      +'</div>'
+      +'<span class="count">×'+e.count+'</span>'
+      +'<button class="del" title="Remove" data-del="'+e.id+'">×</button>'
+      +'</div>';
+  }
+  return html;
+}
+function renderGuide(){
+  const seen=seenSet();
+  const life=Object.fromEntries(lifeList().map(o=>[o.species,o]));
+  const m=curMonth();
+  const sorted=[...SPECIES].sort((a,b)=>{ const d=b.ab[m]-a.ab[m]; return d?d:a.n.localeCompare(b.n); });
+  let cards="";
+  for(const b of sorted){
+    const isSeen=seen.has(b.n), st=statusTag(b);
+    cards+='<div class="gcard '+(isSeen?'seen':'unseen')+'" data-name="'+b.n+'" title="Tap for the full profile">'
+      +(isSeen?'<div class="stamp">✓ Seen</div>':'')
+      +'<div class="top"><span class="dot" style="background:'+b.c+'"></span><div><div class="name">'+b.n+'</div><div class="sci">'+b.s+'</div></div></div>'
+      +'<div class="tags"><span class="tag '+st.cls+'">'+st.t+'</span><span class="tag">'+b.size+'</span>'+(b.feeder?'<span class="tag">Feeder</span>':'')+'</div>'
+      +abundanceBar(b.ab)
+      +'<div class="hint">'+b.hint+'</div><div class="fact">'+b.fact+'</div>'
+      +'<button class="logmini" data-log="'+b.n+'">+ Log a sighting</button>'
+      +(isSeen?'<div class="seenct">'+life[b.n].total+' logged</div>':'')
+      +'</div>';
+  }
+  return '<div class="seasonline">Tap any bird for its full profile — feeding, song, where to look, and its daily &amp; yearly activity.</div><div class="guide">'+cards+'</div>';
+}
+function renderNow(){
+  const m=curMonth(), hr=new Date().getHours();
+  const list=SPECIES.map(b=>{ const ab=b.ab[m], act=(DAILY[b.n]||[])[hr]||0; return {b,ab,act,score:ab*act}; })
+    .filter(x=>x.ab>0 && x.act>0.12)
+    .sort((a,b)=>b.score-a.score);
+  const time=new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});
+  if(!list.length){
+    return '<div class="empty"><div class="big">Quiet right now</div>Most backyard birds are roosting at this hour. Check back around first light (~'+fmtTime(SUN.sunrise)+') — that\'s when the dawn chorus kicks off.</div>';
+  }
+  let head='<div class="seasonline"><b>'+list.length+' birds</b> likely active around '+time+'. Sunrise '+fmtTime(SUN.sunrise)+' · sunset '+fmtTime(SUN.sunset)+'. Tap one for its profile.</div>';
+  let cards='<div class="nowlist">';
+  for(const x of list){
+    const lvl = x.act>=0.66?{t:"Peak",cls:"peak"} : x.act>=0.33?{t:"Active",cls:"now"} : {t:"Winding down",cls:""};
+    cards+='<button class="nowcard" data-detail="'+x.b.n+'">'
+      +'<span class="dot" style="background:'+x.b.c+'"></span>'
+      +'<div class="nc-body"><div class="nc-name">'+x.b.n+'</div><div class="nc-sub">'+x.b.habitat+'</div></div>'
+      +'<span class="tag '+lvl.cls+'">'+lvl.t+'</span></button>';
+  }
+  return head+cards+'</div>';
+}
+function renderLife(){
+  const life=lifeList();
+  if(!life.length) return '<div class="empty"><div class="big">Your life list is empty</div>Every species you log lands here, with the date you first spotted it and your running count.</div>';
+  let cards="";
+  for(const o of life){
+    const b=meta(o.species);
+    cards+='<div class="lcard"><span class="dot" style="background:'+(b.c||"#5C4A38")+'"></span>'
+      +'<div><div class="name">'+escapeHtml(o.species)+'</div><div class="meta">FIRST SEEN '+new Date(o.first).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}).toUpperCase()+'</div></div>'
+      +'<div class="total">'+o.total+'</div></div>';
+  }
+  return '<div class="life">'+cards+'</div>';
+}
+function renderPanel(){
+  const p=document.getElementById("panel");
+  if(activeTab==="journal") p.innerHTML=renderJournal();
+  else if(activeTab==="now") p.innerHTML=renderNow();
+  else if(activeTab==="guide") p.innerHTML=renderGuide();
+  else p.innerHTML=renderLife();
+}
+function renderAll(){ renderStats(); renderPanel(); }
+
+/* ---------------- Detail modal ---------------- */
+function openDetail(name){
+  const b=meta(name); if(!b||!b.n) return;
+  const st=statusTag(b);
+  const curve=DAILY[b.n]||dailyCurve(b.profile, SUN.srH, SUN.ssH);
+  const html=
+    '<button class="modal-x" id="modal-x" aria-label="Close">×</button>'
+    +'<div class="d-head"><span class="dot" style="background:'+b.c+'"></span><div><div class="d-name">'+b.n+'</div><div class="d-sci">'+b.s+'</div></div></div>'
+    +'<div class="tags" style="margin-top:12px"><span class="tag '+st.cls+'">'+st.t+'</span><span class="tag">'+b.size+'</span>'+(b.feeder?'<span class="tag">Feeder</span>':'')+'</div>'
+    +'<div class="d-best">'+bestTime(b.profile)+'</div>'
+    +'<div class="d-section"><div class="d-lbl">Through the day</div>'+dailyStrip(curve)+'</div>'
+    +'<div class="d-section"><div class="d-lbl">Through the year</div>'+abundanceBar(b.ab)+'</div>'
+    +'<div class="info"><span class="ilabel">Food &amp; feeder</span>'+b.food+'</div>'
+    +'<div class="info"><span class="ilabel">Song &amp; calls</span>'+b.voice+'</div>'
+    +'<div class="info"><span class="ilabel">Where to look</span>'+b.habitat+'</div>'
+    +'<div class="info"><span class="ilabel">Behavior</span>'+b.behavior+'</div>'
+    +'<div class="d-fact">'+b.fact+'</div>'
+    +'<button class="btn-log d-log" data-log-modal="'+b.n+'">+ Log a sighting</button>';
+  const card=document.getElementById("detail-card");
+  card.innerHTML=html;
+  document.getElementById("detail").hidden=false;
+  document.getElementById("modal-x").onclick=closeDetail;
+  card.querySelector(".d-log").onclick=()=>{ logBird(b.n,1); closeDetail(); };
+}
+function closeDetail(){ document.getElementById("detail").hidden=true; }
+document.getElementById("detail").addEventListener("click",e=>{ if(e.target.id==="detail") closeDetail(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeDetail(); });
+
+/* ---------------- Autocomplete ---------------- */
+const input=document.getElementById("species-input");
+const suggest=document.getElementById("suggest");
+let sugIndex=-1, sugItems=[];
+function showSuggest(){
+  const q=input.value.trim().toLowerCase();
+  if(!q){ suggest.hidden=true; return; }
+  sugItems=SPECIES.filter(b=>b.n.toLowerCase().includes(q)||b.s.toLowerCase().includes(q)).slice(0,7);
+  if(!sugItems.length){ suggest.hidden=true; return; }
+  suggest.innerHTML=sugItems.map((b,i)=>'<button data-i="'+i+'"><span class="dot" style="background:'+b.c+'"></span>'+b.n+'<span class="sci">'+b.s+'</span></button>').join("");
+  suggest.hidden=false; sugIndex=-1;
+}
+input.addEventListener("input",showSuggest);
+input.addEventListener("focus",showSuggest);
+input.addEventListener("keydown",e=>{
+  if(suggest.hidden){ if(e.key==="Enter") submitLog(); return; }
+  const btns=[...suggest.querySelectorAll("button")];
+  if(e.key==="ArrowDown"){ e.preventDefault(); sugIndex=Math.min(sugIndex+1,btns.length-1); }
+  else if(e.key==="ArrowUp"){ e.preventDefault(); sugIndex=Math.max(sugIndex-1,0); }
+  else if(e.key==="Enter"){ e.preventDefault(); if(sugIndex>=0){ input.value=sugItems[sugIndex].n; suggest.hidden=true; } else submitLog(); return; }
+  else if(e.key==="Escape"){ suggest.hidden=true; return; }
+  btns.forEach((b,i)=>b.classList.toggle("active",i===sugIndex));
+});
+suggest.addEventListener("click",e=>{
+  const btn=e.target.closest("button"); if(!btn) return;
+  input.value=sugItems[+btn.dataset.i].n; suggest.hidden=true; input.focus();
+});
+document.addEventListener("click",e=>{ if(!e.target.closest(".field")) suggest.hidden=true; });
+
+/* ---------------- Events ---------------- */
+async function submitLog(){
+  const name=input.value.trim();
+  if(!name){ input.focus(); return; }
+  const note=document.getElementById("note-input").value;
+  await logBird(name, document.getElementById("count-input").value, note);
+  input.value=""; document.getElementById("count-input").value=1; document.getElementById("note-input").value=""; suggest.hidden=true;
+}
+document.getElementById("log-btn").addEventListener("click",submitLog);
+
+document.getElementById("panel").addEventListener("click",e=>{
+  const del=e.target.closest("[data-del]"); if(del){ deleteSighting(del.dataset.del); return; }
+  const logm=e.target.closest("[data-log]"); if(logm){ logBird(logm.dataset.log,1); return; }
+  const det=e.target.closest("[data-detail]"); if(det){ openDetail(det.dataset.detail); return; }
+  const card=e.target.closest(".gcard"); if(card){ openDetail(card.dataset.name); }
+});
+
+document.querySelectorAll(".tab").forEach(t=>{
+  t.addEventListener("click",()=>{
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    t.classList.add("active"); activeTab=t.dataset.tab; renderPanel();
+  });
+});
+
+/* ---------------- Init ---------------- */
+function setToday(){ document.getElementById("today").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric",year:"numeric"}); }
+function setSunline(){
+  document.getElementById("sunline").textContent="🌅 Dawn chorus peaks around "+fmtTime(SUN.sunrise)+" · sunset "+fmtTime(SUN.sunset);
+}
+(async function init(){
+  setToday(); computeSun(); setSunline(); renderChips();
+  await loadLocal();
+  renderAll();
+  if(initSupabase()){ setSyncBadge(true); await pullFromCloud(); subscribeCloud(); }
+  else setSyncBadge(false);
+})();
+</script>
+</body>
+</html>
